@@ -1,0 +1,5 @@
+{
+  "name": "NovaBuzzer Pro",
+  "description": "A production-ready game buzzer system with millisecond photo-finish logic, haptic feedback, and dual-view control panel designed for local network performance.",
+  "requestFramePermissions": []
+}
