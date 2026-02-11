@@ -31,6 +31,12 @@ export const translations = {
     INIT_CONN: "Initialize Connection",
     CONN_READY: "LINK READY",
     NO_ENGINE: "NO ENGINE",
+    // Audio Settings
+    AUDIO_SETTINGS: "Sound Settings",
+    UPLOAD_MP3: "Upload MP3 for 1st Place",
+    SELECT_FILE: "Select File",
+    SOUND_READY: "Sound Ready",
+    NO_SOUND: "No sound selected",
     // Player Panel specific
     P_PAUSED: "SYSTEM PAUSED",
     P_STANDBY: "STANDBY",
@@ -42,7 +48,8 @@ export const translations = {
     P_OFF: "OFF",
     P_PROTOCOL: "User Protocol",
     P_STATUS: "Arena Status",
-    P_AWAITING: "AWAITING START"
+    P_AWAITING: "AWAITING START",
+    FULL_SCREEN: "Full Screen"
   },
   RU: {
     MASTER_CONTROL: "ГЛАВНАЯ ПАНЕЛЬ",
@@ -75,6 +82,12 @@ export const translations = {
     INIT_CONN: "Установить соединение",
     CONN_READY: "СВЯЗЬ ЕСТЬ",
     NO_ENGINE: "НЕТ СЕРВЕРА",
+    // Audio Settings
+    AUDIO_SETTINGS: "Настройки звука",
+    UPLOAD_MP3: "Загрузить MP3 для 1-го места",
+    SELECT_FILE: "Выбрать файл",
+    SOUND_READY: "Звук готов",
+    NO_SOUND: "Звук не выбран",
     // Player Panel specific
     P_PAUSED: "СИСТЕМА НА ПАУЗЕ",
     P_STANDBY: "ОЖИДАНИЕ",
@@ -86,6 +99,7 @@ export const translations = {
     P_OFF: "ВЫКЛ",
     P_PROTOCOL: "Протокол пользователя",
     P_STATUS: "Статус арены",
-    P_AWAITING: "ЖДЕМ СТАРТА"
+    P_AWAITING: "ЖДЕМ СТАРТА",
+    FULL_SCREEN: "Полный экран"
   }
 };

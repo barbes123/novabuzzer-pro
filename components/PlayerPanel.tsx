@@ -4,6 +4,7 @@ import { Socket } from 'socket.io-client';
 import { GameState, BuzzRecord, Language } from '../types';
 import { translations } from '../translations';
 
+
 interface Props {
   socket: Socket;
   gameState: GameState;
@@ -18,6 +19,25 @@ const PlayerPanel: React.FC<Props> = ({ socket, gameState, buzzes, initialName, 
   const [isBuzzed, setIsBuzzed] = useState(false);
   const [isDisabled, setIsDisabled] = useState(initialDisabled);
   const [name, setName] = useState(initialName);
+
+  // --- FULLSCREEN LOGIC START ---
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  // This updates the icon if the user exits fullscreen using the ESC key
+  useEffect(() => {
+    const handler = () => setIsFullScreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen();
+    }
+  };
+  // --- FULLSCREEN LOGIC END ---
 
   const t = translations[language];
 
@@ -70,10 +90,25 @@ const PlayerPanel: React.FC<Props> = ({ socket, gameState, buzzes, initialName, 
   const isArmed = (gameState === 'ACTIVE' || gameState === 'WINDOW_OPEN') && !isBuzzed && !isDisabled;
 
   return (
-    <div className={`h-screen flex flex-col p-8 items-center justify-between transition-all duration-700 overflow-hidden ${
+    // <div className={`h-screen flex flex-col p-8 items-center justify-between transition-all duration-700 overflow-hidden ${
+    <div className={`h-screen flex flex-col p-8 items-center justify-between transition-all duration-700 overflow-hidden relative ${
       isWinner ? 'bg-yellow-600' : isDisabled ? 'bg-slate-900 opacity-80' : 'bg-slate-950'
     }`}>
       {/* Top HUD */}
+
+      {/* Full Screen Toggle Button */}
+      <button 
+        onClick={toggleFullScreen}
+        className="absolute top-4 right-4 z-50 p-3 bg-slate-800/40 hover:bg-slate-700/60 rounded-xl text-slate-400 hover:text-white border border-slate-700/50 backdrop-blur-md transition-all active:scale-95 shadow-lg"
+      >
+        {isFullScreen ? (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 9L4 4m0 0l5-1m-5 1l1 5M15 9l5-5m0 0l-5-1m5 1l-1 5M9 15l-5 5m0 0l5 1m-5-1l1-5M15 15l5 5m0 0l-5 1m5-1l-1-5"/></svg>
+        ) : (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+        )}
+      </button>
+
+
       <div className="w-full space-y-4">
         <div className={`w-full p-4 rounded-3xl border-2 text-center font-black uppercase tracking-tighter shadow-2xl transition-all duration-500 ${
           isWinner ? 'bg-white border-white text-yellow-700' : 
