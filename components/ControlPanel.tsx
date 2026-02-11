@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Socket } from 'socket.io-client';
 import { GameState, Player, BuzzRecord, Language } from '../types';
 import { translations } from '../translations';
+import { SOUNDS } from '../constants';
 
 interface Props {
   socket: Socket;
@@ -39,6 +40,14 @@ const ControlPanel: React.FC<Props> = ({ socket, gameState, gateCode, players, b
   };
 
   const winnerId = buzzes.find(b => b.rank === 1)?.playerId;
+
+  React.useEffect(() => {
+    const winner = buzzes.find(b => b.rank === 1);
+    if (winner) {
+      const audio = new Audio(SOUNDS.WINNER_FANFARE);
+      audio.play().catch(e => console.error("Audio playback failed:", e));
+    }
+  }, [buzzes]);
 
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-slate-200">
