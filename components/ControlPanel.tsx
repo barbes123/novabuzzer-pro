@@ -15,6 +15,8 @@ interface Props {
 }
 
 const ControlPanel: React.FC<Props> = ({ socket, gameState, gateCode, players, buzzes, language }) => {
+  const [volume, setVolume] = useState(0.5); // 0.5 is 50% volume
+  const [isMuted, setIsMuted] = useState(false);
   const [activeTab, setActiveTab] = useState<'host' | 'test'>('host');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempName, setTempName] = useState('');
@@ -41,13 +43,15 @@ const ControlPanel: React.FC<Props> = ({ socket, gameState, gateCode, players, b
 
   const winnerId = buzzes.find(b => b.rank === 1)?.playerId;
 
-  React.useEffect(() => {
+ React.useEffect(() => {
     const winner = buzzes.find(b => b.rank === 1);
-    if (winner) {
+    // Only play if there's a winner AND we are not muted
+    if (winner && !isMuted) {
       const audio = new Audio(SOUNDS.WINNER_FANFARE);
+      audio.volume = volume; 
       audio.play().catch(e => console.error("Audio playback failed:", e));
     }
-  }, [buzzes]);
+  }, [buzzes, isMuted, volume]);
 
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-slate-200">
@@ -71,6 +75,44 @@ const ControlPanel: React.FC<Props> = ({ socket, gameState, gateCode, players, b
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 11.37 9.19 15.378 3 18.125M12 21a11.96 11.96 0 01-5.118-1.148"/></svg>
             {language}
           </button>
+
+
+
+
+                  {/* Volume Controls */}
+        <div className="flex items-center gap-3 bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl">
+          <button 
+            onClick={() => setIsMuted(!isMuted)}
+            className="text-slate-400 hover:text-white transition-colors"
+          >
+            {isMuted || volume === 0 ? (
+              <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+            )}
+          </button>
+          
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.01" 
+            value={volume} 
+            onChange={(e) => setVolume(parseFloat(e.target.value))}
+            className="w-20 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+          />
+          
+          <span className="text-[10px] font-mono font-bold text-slate-500 w-8">
+            {Math.round(volume * 100)}%
+          </span>
+        </div>
+
+
+
+
+
+
+
           
           <div className="flex bg-slate-800/50 p-1 rounded-xl border border-slate-700/50">
             <button onClick={() => setActiveTab('host')} className={`px-5 py-2 rounded-lg transition-all text-xs font-black uppercase tracking-widest ${activeTab === 'host' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>{t.LOBBY}</button>
