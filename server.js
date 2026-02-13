@@ -71,6 +71,12 @@ io.on('connection', (socket) => {
     const { type, data } = typeof payload === 'string' ? { type: payload } : payload;
     
     switch(type) {
+      case 'SET_STATE':
+        gameState = data.state; // 'BATTLE' or 'IDLE'
+        if (gameState === 'IDLE') buzzes = []; // Clear buzzes on disarm
+        io.emit('gameStateUpdate', { state: gameState, buzzes });
+        console.log(`[GAME] State changed to: ${gameState}`);
+        break;
       case 'CHANGE_LANGUAGE':
         currentLanguage = data.language;
         io.emit('languageUpdate', { language: currentLanguage });
@@ -133,8 +139,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('buzz', () => {
+    // const player = players.get(socket.id);
+    // if (!player || player.disabled || (gameState !== 'ACTIVE' && gameState !== 'WINDOW_OPEN')) return;
     const player = players.get(socket.id);
-    if (!player || player.disabled || (gameState !== 'ACTIVE' && gameState !== 'WINDOW_OPEN')) return;
+    // ADD 'BATTLE' TO THIS LINE:
+    if (!player || player.disabled || (gameState !== 'ACTIVE' && gameState !== 'WINDOW_OPEN' && gameState !== 'BATTLE')) return;
 
     const buzzTime = Date.now();
     const offset = buzzTime - startTime;

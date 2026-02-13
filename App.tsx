@@ -70,10 +70,26 @@ const App: React.FC = () => {
       }
     });
 
-    newSocket.on('gameStateUpdate', (data) => {
+    // newSocket.on('gameStateUpdate', (data) => {
+    //   setGameState(data.state);
+    //   if (data.buzzes) setBuzzes(data.buzzes);
+    //   if (data.state === 'IDLE') setBuzzes([]);
+    // });
+
+  newSocket.on('gameStateUpdate', (data) => {
+      // This log will tell you if the signal is reaching the phone
+      console.log("📥 [PLAYER_APP] State received:", data.state);
+
+      // Force the state update
       setGameState(data.state);
+
+      // Handle buzzes
       if (data.buzzes) setBuzzes(data.buzzes);
-      if (data.state === 'IDLE') setBuzzes([]);
+      
+      // If we stop or reset, clear the ranking list
+      if (data.state === 'IDLE') {
+        setBuzzes([]);
+      }
     });
 
     newSocket.on('languageUpdate', (data) => {
