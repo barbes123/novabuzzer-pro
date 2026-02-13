@@ -22,3 +22,15 @@ View your app in AI Studio: https://ai.studio/apps/drive/1Hl0kwd2oy3OMGVO3p-2fTP
 **Links**
 
 http://localhost:5173/?role=host
+
+**Errors**
+
+sudo lsof -i :3001
+kill -9 <PID_NUMBER>
+sudo ss -lptn 'sport = :3001'
+sudo pkill -9 node
+
+
+**some notes**
+
+// "SOCKET_URL": "http://10.42.0.1:3000",
