@@ -19,7 +19,7 @@ const PlayerPanel: React.FC<Props> = ({ socket, gameState, buzzes, initialName, 
   const [isBuzzed, setIsBuzzed] = useState(false);
   const [isDisabled, setIsDisabled] = useState(initialDisabled);
   const [name, setName] = useState(initialName);
-
+// const isArmed = (gameState as any) === 'ACTIVE' || (gameState as any) === 'BATTLE' || (gameState as any)?.state === 'ACTIVE' || (gameState as any)?.state === 'BATTLE';
   // --- FULLSCREEN LOGIC START ---
   const [isFullScreen, setIsFullScreen] = useState(false);
 
@@ -86,8 +86,13 @@ const PlayerPanel: React.FC<Props> = ({ socket, gameState, buzzes, initialName, 
     socket.emit('buzz');
   };
 
-  const isWinner = result?.rank === 1;
-  const isArmed = (gameState === 'ACTIVE' || gameState === 'WINDOW_OPEN') && !isBuzzed && !isDisabled;
+const isWinner = result?.rank === 1;
+
+   // 1. ADD THIS LINE: It cleans the data so the next line works
+   const currentStatus = (gameState as any)?.state || gameState;
+
+   // 2. REPLACE YOUR OLD isArmed WITH THIS:
+   const isArmed = (currentStatus === 'ACTIVE' || currentStatus === 'BATTLE' || currentStatus === 'WINDOW_OPEN') && !isBuzzed && !isDisabled;
 
   return (
     // <div className={`h-screen flex flex-col p-8 items-center justify-between transition-all duration-700 overflow-hidden ${
