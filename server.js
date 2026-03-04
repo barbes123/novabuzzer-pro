@@ -1,4 +1,3 @@
-
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -26,12 +25,15 @@ let startTime = 0;
 let buzzes = [];
 let players = new Map();
 let windowTimer = null;
+let targetPlayerId = null;
 
 console.log(`\n[INIT] NovaBuzzer Pro Engine Started`);
 console.log(`[INIT] Secret Gate Code: ${secretGateCode}`);
 console.log(`[INIT] Port: ${config.server.port}\n`);
 
 io.on('connection', (socket) => {
+  
+  // 1. REGISTRATION LOGIC
   socket.on('register', ({ name, code, role }) => {
     if (role === 'host') {
       socket.join('host-room');
@@ -51,7 +53,6 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // New players are ALWAYS paused by default
     const newPlayer = { name, id: socket.id, disabled: true };
     players.set(socket.id, newPlayer);
     socket.join('players-room');
@@ -67,13 +68,21 @@ io.on('connection', (socket) => {
     io.to('host-room').emit('playerListUpdate', Array.from(players.values()));
   });
 
+  // --- THE SYNC BRIDGE (ADDED HERE) ---
+  // This catches the full game data from the laptop and sends it to the phone
+  socket.on('updateGameState', (fullState) => {
+    socket.broadcast.emit('gameStateLink', fullState);
+  });
+  // ------------------------------------
+
+  // 2. GAME ACTION LOGIC
   socket.on('gameAction', (payload) => {
     const { type, data } = typeof payload === 'string' ? { type: payload } : payload;
 
     switch (type) {
       case 'SET_STATE':
-        gameState = data.state; // 'BATTLE' or 'IDLE'
-        if (gameState === 'IDLE') buzzes = []; // Clear buzzes on disarm
+        gameState = data.state;
+        if (gameState === 'IDLE') buzzes = [];
         io.emit('gameStateUpdate', { state: gameState, buzzes });
         console.log(`[GAME] State changed to: ${gameState}`);
         break;
@@ -81,27 +90,48 @@ io.on('connection', (socket) => {
         currentLanguage = data.language;
         io.emit('languageUpdate', { language: currentLanguage });
         break;
-
       case 'RESET':
+	targetPlayerId = null;
         clearTimeout(windowTimer);
         gameState = 'IDLE';
         buzzes = [];
         startTime = 0;
         io.emit('gameStateUpdate', { state: 'IDLE', buzzes: [] });
         break;
-
-      case 'START_ROUND':
+     case 'START_ROUND':
         gameState = 'ACTIVE';
+
+        // Check: Is someone already locked in from ARM_SPECIFIC?
+        // If targetPlayerId is ALREADY something (not null), we leave it alone.
+        // If it IS null, we keep it null (allowing everyone to buzz).
+        if (targetPlayerId === null) {
+          targetPlayerId = null; 
+        }
+
         buzzes = [];
         startTime = Date.now();
-        io.emit('gameStateUpdate', { state: 'ACTIVE', startTime, buzzes: [] });
-        break;
 
+        // We include the targetId in the emit so phones know if they are allowed to buzz
+        io.emit('gameStateUpdate', { 
+          state: 'ACTIVE', 
+          startTime, 
+          buzzes: [],
+          targetId: targetPlayerId 
+        });
+
+        console.log(`[GAME] Round Started. Mode: ${targetPlayerId ? 'SPRINT' : 'NORMAL'}`);
+        break;
+      case 'ARM_SPECIFIC':
+        gameState = 'ACTIVE'; 
+        targetPlayerId = data.playerId; // Lock to this specific socket.id
+        buzzes = [];
+        io.emit('gameStateUpdate', { state: 'ACTIVE', targetId: targetPlayerId });
+        console.log(`[SPRINT] Armed only player: ${targetPlayerId}`);
+        break;
       case 'REGEN_CODE':
         secretGateCode = Math.random().toString(36).substring(2, 8).toUpperCase();
         io.to('host-room').emit('gateCodeUpdate', secretGateCode);
         break;
-
       case 'TOGGLE_PAUSE':
         if (players.has(data.id)) {
           const p = players.get(data.id);
@@ -111,7 +141,6 @@ io.on('connection', (socket) => {
           io.to(data.id).emit('statusUpdate', { disabled: p.disabled });
         }
         break;
-
       case 'UPDATE_PLAYER':
         if (players.has(data.id)) {
           const player = players.get(data.id);
@@ -121,7 +150,6 @@ io.on('connection', (socket) => {
           io.to(data.id).emit('profileUpdate', { name: data.newName });
         }
         break;
-
       case 'KICK_PLAYER':
         if (players.has(data.id)) {
           players.delete(data.id);
@@ -129,7 +157,6 @@ io.on('connection', (socket) => {
           io.to('host-room').emit('playerListUpdate', Array.from(players.values()));
         }
         break;
-
       case 'KICK_ALL':
         io.to('players-room').emit('kicked');
         players.clear();
@@ -138,65 +165,21 @@ io.on('connection', (socket) => {
     }
   });
 
-  // socket.on('buzz', () => {
-  //   // const player = players.get(socket.id);
-  //   // if (!player || player.disabled || (gameState !== 'ACTIVE' && gameState !== 'WINDOW_OPEN')) return;
-  //   const player = players.get(socket.id);
-  //   // ADD 'BATTLE' TO THIS LINE:
-  //   if (!player || player.disabled || (gameState !== 'ACTIVE' && gameState !== 'WINDOW_OPEN' && gameState !== 'BATTLE')) return;
-
-  //   const buzzTime = Date.now();
-  //   const offset = buzzTime - startTime;
-
-  //   if (buzzes.find(b => b.playerId === socket.id)) return;
-
-  //   if (gameState === 'ACTIVE') {
-  //     gameState = 'WINDOW_OPEN';
-  //     windowTimer = setTimeout(() => {
-  //       gameState = 'LOCKED';
-  //       io.emit('gameStateUpdate', { state: 'LOCKED', buzzes });
-  //     }, config.game.buzzerWindowMs);
-  //   }
-
-  //   const rank = buzzes.length + 1;
-  //   const buzzRecord = { playerId: socket.id, playerName: player.name, timestamp: buzzTime, offset, rank };
-  //   buzzes.push(buzzRecord);
-
-  //   // --- THE BRIDGE SIGNAL ---
-  //   if (rank === 1) {
-  //     // This sends the message to BOTH the Buzzer Master Control 
-  //     // AND your Music Game App (because they are both 'hosts')
-  //     io.to('host-room').emit('firstBuzzDetected', {
-  //       winnerName: player.name,
-  //       playerId: socket.id
-  //     });
-
-  //     // Turn everyone's button gray immediately
-  //     gameState = 'LOCKED';
-  //     io.emit('gameStateUpdate', { state: 'LOCKED', buzzes });
-  //   }
-  //   // -------------------------
-
-
-
-  //   socket.emit('buzzResult', { rank, offset });
-  //   io.to('host-room').emit('liveBuzzUpdate', buzzes);
-  // });
-
+  // 3. BUZZER LOGIC
   socket.on('buzz', () => {
     const player = players.get(socket.id);
+    console.log(`[BUZZ_ATTEMPT] From: ${player?.name}. Current State: ${gameState}`);
 
-    // 🔍 DEBUG LOG: This will show up in your terminal
-    console.log(`[BUZZ_ATTEMPT] From: ${player?.name}. Current Server State: ${gameState}`);
-
-    // 🔴 THE FIX: You must add 'BATTLE' here. 
-    // If gameState is 'BATTLE' and it's not in this list, the code STOPS here.
     if (!player || player.disabled || (gameState !== 'ACTIVE' && gameState !== 'WINDOW_OPEN' && gameState !== 'BATTLE')) {
       console.log("❌ BUZZ REJECTED: State mismatch or player disabled.");
       return;
     }
+    
+    if (targetPlayerId !== null && socket.id !== targetPlayerId) {
+      console.log(`[REJECTED] Blocked buzz from ${player.name} (Not the target)`);
+      return; 
+    }
 
-    // Prevent same player from buzzing twice
     if (buzzes.find(b => b.playerId === socket.id)) return;
 
     const rank = buzzes.length + 1;
@@ -204,12 +187,8 @@ io.on('connection', (socket) => {
 
     if (rank === 1) {
       console.log(`✅ SUCCESS: ${player.name} is the winner!`);
-
-      // 1. TELL THE PHONES TO TURN GRAY (The Buzz App logic)
       gameState = 'LOCKED';
       io.emit('gameStateUpdate', { state: 'LOCKED', buzzes });
-
-      // 2. TELL THE GAME APP TO STOP MUSIC (The Music App bridge)
       io.to('host-room').emit('firstBuzzDetected', {
         winnerName: player.name,
         playerId: socket.id

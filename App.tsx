@@ -70,26 +70,29 @@ const App: React.FC = () => {
       }
     });
 
-    // newSocket.on('gameStateUpdate', (data) => {
-    //   setGameState(data.state);
-    //   if (data.buzzes) setBuzzes(data.buzzes);
-    //   if (data.state === 'IDLE') setBuzzes([]);
-    // });
+newSocket.on('gameStateUpdate', (data) => {
+      console.log("📥 [PLAYER_APP] State received:", data.state, "Target:", data.targetId);
 
-  newSocket.on('gameStateUpdate', (data) => {
-      // This log will tell you if the signal is reaching the phone
-      console.log("📥 [PLAYER_APP] State received:", data.state);
-
-      // Force the state update
+      // 1. Update the global game state
       setGameState(data.state);
 
-      // Handle buzzes
-      if (data.buzzes) setBuzzes(data.buzzes);
-      
-      // If we stop or reset, clear the ranking list
-      if (data.state === 'IDLE') {
-        setBuzzes([]);
+      // 2. Handle the "Target Lock" for Round 4 (Sprint)
+      if (data.state === 'ACTIVE') {
+        // If targetId is provided, I'm only enabled if it matches MY socket ID
+        // If targetId is null/undefined, everyone is enabled (Normal Rounds)
+        const isMyTurn = !data.targetId || data.targetId === newSocket.id;
+        
+        setPlayerData(prev => ({
+          ...prev,
+          disabled: !isMyTurn // Disable the button if it's not my turn
+        }));
+      } else {
+        // If state is IDLE or LOCKED, everyone is disabled
+        setPlayerData(prev => ({ ...prev, disabled: true }));
       }
+
+      if (data.buzzes) setBuzzes(data.buzzes);
+      if (data.state === 'IDLE') setBuzzes([]);
     });
 
     newSocket.on('languageUpdate', (data) => {
