@@ -31,7 +31,36 @@ const App: React.FC = () => {
     disabled: true
   });
 
+  const playerDataRef = React.useRef(playerData);
+  const gateCodeRef = React.useRef(gateCode);
+  const isRegisteredRef = React.useRef(isRegistered);
+
+  // Keep the refs in sync with state
+  useEffect(() => {
+    playerDataRef.current = playerData;
+    gateCodeRef.current = gateCode;
+    isRegisteredRef.current = isRegistered;
+  }, [playerData, gateCode, isRegistered]);
+
   const t = translations[language];
+
+  // --- ADD THIS BLOCK ---
+  const requestWakeLock = async () => {
+    if ('wakeLock' in navigator) {
+      try {
+        const sentinel = await (navigator as any).wakeLock.request('screen');
+        console.log("🌞 [SYSTEM] Wake Lock Active - Screen will stay on.");
+
+        // Re-request if the page is minimized and then reopened
+        sentinel.addEventListener('release', () => {
+          console.log("⚠️ [SYSTEM] Wake Lock released.");
+        });
+      } catch (err: any) {
+        console.error(`❌ [SYSTEM] Wake Lock Error: ${err.message}`);
+      }
+    }
+  };
+  // ----------------------
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -49,6 +78,20 @@ const App: React.FC = () => {
     newSocket.on('connect', () => {
       setIsConnected(true);
       setRegistrationError('');
+      // --- ADD THIS LOGIC HERE ---
+      // We use a small trick: checking 'isRegistered' from state might be tricky inside 
+      // an effect with an empty dependency array. To be safe, we check if we have a name.
+      // Use the REF values, not the state values
+      if (isRegisteredRef.current && role === 'player') {
+        console.log("⚡ [RESYNC] Phone woke up. Re-registering as:", playerDataRef.current.name);
+
+        newSocket.emit('register', {
+          name: playerDataRef.current.name,
+          code: gateCodeRef.current,
+          role: 'player'
+        });
+      }
+      // ----------------------------
     });
 
     newSocket.on('connect_error', () => {
@@ -60,6 +103,9 @@ const App: React.FC = () => {
       setIsConnecting(false);
       if (data.success) {
         setIsRegistered(true);
+        // --- ADD THIS LINE HERE ---
+        requestWakeLock();
+        // --------------------------
         if (data.language) setLanguage(data.language);
         if (data.gateCode) setGateCode(data.gateCode);
         if (data.role === 'player') {
@@ -70,7 +116,7 @@ const App: React.FC = () => {
       }
     });
 
-newSocket.on('gameStateUpdate', (data) => {
+    newSocket.on('gameStateUpdate', (data) => {
       console.log("📥 [PLAYER_APP] State received:", data.state, "Target:", data.targetId);
 
       // 1. Update the global game state
@@ -81,7 +127,7 @@ newSocket.on('gameStateUpdate', (data) => {
         // If targetId is provided, I'm only enabled if it matches MY socket ID
         // If targetId is null/undefined, everyone is enabled (Normal Rounds)
         const isMyTurn = !data.targetId || data.targetId === newSocket.id;
-        
+
         setPlayerData(prev => ({
           ...prev,
           disabled: !isMyTurn // Disable the button if it's not my turn
@@ -199,14 +245,14 @@ newSocket.on('gameStateUpdate', (data) => {
             handleRegister(formData.get('name') as string, (formData.get('code') as string || '').toUpperCase());
           }} className="space-y-6 relative z-10"> */}
           <form onSubmit={(e) => {
-              e.preventDefault();
-              // Use the state values directly. 
-              // If it's a player, we use the name from state and the code from the input below
-              const formData = new FormData(e.currentTarget);
-              const code = role === 'player' ? (formData.get('code') as string || '').toUpperCase() : gateCode;
+            e.preventDefault();
+            // Use the state values directly. 
+            // If it's a player, we use the name from state and the code from the input below
+            const formData = new FormData(e.currentTarget);
+            const code = role === 'player' ? (formData.get('code') as string || '').toUpperCase() : gateCode;
 
-              handleRegister(playerData.name, code);
-            }}
+            handleRegister(playerData.name, code);
+          }}
             className="space-y-6 relative z-10"
           >
 
