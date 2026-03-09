@@ -9,17 +9,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vitejs/plugin-react": "^5.1.4",
+    "express": "^5.2.1",
+    "fs": "^0.0.1-security",
+    "http": "^0.0.1-security",
+    "path": "^0.12.7",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "fs": "^0.0.1-security",
-    "path": "^0.12.7",
-    "@vitejs/plugin-react": "^5.1.4",
-    "url": "^0.11.4",
-    "http": "^0.0.1-security",
-    "vite": "^7.3.1",
     "socket.io": "^4.8.3",
-    "express": "^5.2.1",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "url": "^0.11.4",
+    "vite": "^7.3.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
