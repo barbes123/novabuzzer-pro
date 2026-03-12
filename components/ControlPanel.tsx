@@ -28,16 +28,6 @@ const ControlPanel: React.FC<Props> = ({ socket, gameState, gateCode, players, b
   // Helper to check if the system is currently "Live" (Armed or Playing)
   const isArmed = gameState === 'ACTIVE' || gameState === 'BATTLE';
 
-  // const handleAction = (type: string, data?: any) => {
-  //   setLastAction(`Executing ${type}...`);
-  //   socket.emit('gameAction', { type, data });
-
-  //   // Sync status label based on the new isArmed logic
-  //   setTimeout(() => {
-  //     setLastAction(isArmed ? 'Armed' : 'Standby');
-  //   }, 1000);
-  // };
-
   const handleAction = (type: string, data?: any) => {
     setLastAction(`Executing ${type}...`);
     socket.emit('gameAction', { type, data });
@@ -144,15 +134,15 @@ const ControlPanel: React.FC<Props> = ({ socket, gameState, gateCode, players, b
                 <div className="flex items-center gap-4">
                   <div className="text-6xl font-mono font-black text-blue-400 tracking-[0.2em] bg-slate-800/50 px-6 py-2 rounded-2xl min-w-[300px] text-center">{showGateCode ? gateCode : '••••••'}</div>
                   <button onClick={() => setShowGateCode(!showGateCode)} className="p-4 bg-slate-800 hover:bg-slate-700 rounded-2xl text-slate-400 hover:text-white transition-all border border-slate-700 font-bold text-[10px] uppercase tracking-widest">{showGateCode ? t.HIDE : t.SHOW}</button>
-               <button 
-  onClick={() => handleAction('REGEN_CODE')} 
-  className="p-4 bg-slate-800 hover:bg-slate-700 rounded-2xl text-slate-400 hover:text-white transition-all border border-slate-700 flex items-center gap-2"
->
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-  </svg>
-  <span className="text-[10px] font-black uppercase tracking-widest">Refresh</span>
-</button>
+                  <button
+                    onClick={() => handleAction('REGEN_CODE')}
+                    className="p-4 bg-slate-800 hover:bg-slate-700 rounded-2xl text-slate-400 hover:text-white transition-all border border-slate-700 flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Refresh</span>
+                  </button>
                   <button onClick={copyGateCode} className="p-4 bg-slate-800 hover:bg-slate-700 rounded-2xl text-slate-400 hover:text-white transition-all border border-slate-700 flex items-center gap-2">
                     {copied ? (
                       <><svg className="w-5 h-5 text-green-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 00-1.414-1.414L8 11.172 4.707 7.879A1 1 0 003.293 9.293l4 4a1 1 0 001.414 0l8-8z" clipRule="evenodd" /></svg><span className="text-[10px] font-black uppercase tracking-widest text-green-300">{t.COPIED || 'Copied'}</span></>
@@ -217,79 +207,97 @@ const ControlPanel: React.FC<Props> = ({ socket, gameState, gateCode, players, b
                 <div className="py-20 text-center text-slate-700 font-mono text-[10px] uppercase tracking-[0.5em] animate-pulse">{t.WAITING_REG}</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-         {players.map((p, idx) => {
-  const isWinner = winnerId === p.id;
-  // Check if player is armed (not disabled and game is in armed state)
-  const isArmed = !p.disabled && (gameState === 'ACTIVE' || gameState === 'BATTLE' || gameState === 'WINDOW_OPEN');
-  
-  return (
-    <div 
-      key={p.id} 
-      className={`p-5 rounded-2xl flex flex-col group transition-all shadow-lg border-2 
-        ${isWinner ? 'bg-yellow-500/10 border-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.2)]' : 
-          p.disabled ? 'bg-slate-900 border-slate-800 opacity-60' : 
-          'bg-slate-800/50 border-slate-700 hover:border-blue-500'
-        }`}
-    >
-      
-      {/* Top section - Player info only */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl italic 
-            ${isWinner ? 'bg-yellow-500 text-slate-950' : 
-              'bg-blue-600/10 text-blue-400'
-            }`}>
-            {idx + 1}
-          </div>
-          <div className="flex flex-col">
-            {editingId === p.id ? (
-              <input autoFocus className="bg-slate-700 text-white p-2 rounded-lg text-sm outline-none w-24 border border-blue-500" value={tempName} onChange={(e) => setTempName(e.target.value)} onBlur={() => saveName(p.id)} onKeyDown={(e) => e.key === 'Enter' && saveName(p.id)} />
-            ) : (
-              <span className={`font-black uppercase tracking-tight truncate text-lg 
-                ${isWinner ? 'text-yellow-500' : 
-                  'text-slate-100'
-                }`}>
-                {p.name}
-              </span>
-            )}
-            <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">{p.manualId ? `SLOT ${p.manualId}` : `UNASSIGNED`}</span>
-          </div>
-        </div>
-      </div>
+                  {players.map((p, idx) => {
+                    const isWinner = winnerId === p.id;
+                    const isLostSync = p.connected === false;
+                    // Check if player is armed (not disabled and game is in armed state)
+                    const isArmed = !p.disabled && (gameState === 'ACTIVE' || gameState === 'BATTLE' || gameState === 'WINDOW_OPEN');
 
-      {/* Single line with status on left, buttons on right */}
-      <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-700/50">
-        <div className="flex items-center gap-2">
-          {isWinner && <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-500/10 px-2 py-1 rounded">{t.CHAMPION}</span>}
-          {p.disabled && <span className="text-[10px] font-black text-red-500 uppercase tracking-widest bg-red-500/10 px-2 py-1 rounded">{t.PAUSED}</span>}
-          {isArmed && !isWinner && <span className="text-[10px] font-black text-red-400 uppercase tracking-widest bg-red-500/10 px-2 py-1 rounded animate-pulse">ARMED</span>}
-          {!isWinner && !p.disabled && !isArmed && <span className="text-[10px] font-black text-green-500 uppercase tracking-widest bg-green-500/10 px-2 py-1 rounded">ACTIVE</span>}
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => handleAction('TOGGLE_PAUSE', { id: p.id })} 
-            className={`px-6 py-2 rounded-lg transition-colors ${p.disabled ? 'bg-green-900/20 text-green-500 hover:bg-green-900/40' : 'bg-orange-900/20 text-orange-500 hover:bg-orange-900/40'}`}
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-          </button>
-          <button onClick={() => { setEditingId(p.id); setTempName(p.name); }} className="p-2 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors">
-            <svg className="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-          </button>
-          <button onClick={() => handleAction('KICK_PLAYER', { id: p.id })} className="p-2 bg-red-900/20 rounded-lg hover:bg-red-900/40 transition-colors">
-            <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-})}
+                    return (
+                      <div
+                        //key={p.id}
+                        key={p.name}
+                        className={`p-5 rounded-2xl flex flex-col transition-all shadow-lg border-2 
+        ${isWinner ? 'bg-yellow-500/10 border-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.2)]' :
+                            // ✅ MODIFICATION 3: This logic now toggles instantly when isLostSync flips
+                            isLostSync ? 'bg-slate-900 border-slate-800 opacity-40 grayscale' :
+                              p.disabled ? 'bg-slate-900 border-slate-800 opacity-60' :
+                                'bg-slate-800/50 border-slate-700 hover:border-blue-500'
+                          }`}
+                      >
+
+                        {/* Top section - Player info only */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl italic 
+            ${isWinner ? 'bg-yellow-500 text-slate-950' :
+                                'bg-blue-600/10 text-blue-400'
+                              }`}>
+                              {idx + 1}
+                            </div>
+                            <div className="flex flex-col">
+                              {editingId === p.id ? (
+                                <input autoFocus className="bg-slate-700 text-white p-2 rounded-lg text-sm outline-none w-24 border border-blue-500" value={tempName} onChange={(e) => setTempName(e.target.value)} onBlur={() => saveName(p.id)} onKeyDown={(e) => e.key === 'Enter' && saveName(p.id)} />
+                              ) : (
+                                <span className={`font-black uppercase tracking-tight truncate text-lg 
+                ${isWinner ? 'text-yellow-500' :
+                                    'text-slate-100'
+                                  }`}>
+                                  {p.name}
+                                </span>
+                              )}
+                              {/* <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">
+                                {p.connected === false ? 'LOST-SYNC' : (p.manualId ? `SLOT ${p.manualId}` : `UNASSIGNED`)}
+                              </span> */}
+                              <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">
+                                {/* ✅ MODIFICATION 4: Update sub-text label */}
+                                {isLostSync ? 'LOST-SYNC' : (p.manualId ? `SLOT ${p.manualId}` : `UNASSIGNED`)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Single line with status on left, buttons on right */}
+                        <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-700/50">
+                          <div className="flex items-center gap-2">
+                            {/* Status Badge Area */}
+                            {p.connected === false ? (
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-700 px-2 py-1 rounded">LOST-SYNC</span>
+                            ) : (
+                              <>
+                                {isWinner && <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-500/10 px-2 py-1 rounded">{t.CHAMPION}</span>}
+                                {p.disabled && <span className="text-[10px] font-black text-red-500 uppercase tracking-widest bg-red-500/10 px-2 py-1 rounded">{t.PAUSED}</span>}
+                                {isArmed && !isWinner && <span className="text-[10px] font-black text-red-400 uppercase tracking-widest bg-red-500/10 px-2 py-1 rounded animate-pulse">ARMED</span>}
+                                {!isWinner && !p.disabled && !isArmed && <span className="text-[10px] font-black text-green-500 uppercase tracking-widest bg-green-500/10 px-2 py-1 rounded">ACTIVE</span>}
+                              </>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              disabled={p.connected === false}
+                              onClick={() => handleAction('TOGGLE_PAUSE', { id: p.id })}
+                              className={`px-6 py-2 rounded-lg transition-colors ${p.disabled ? 'bg-green-900/20 text-green-500 hover:bg-green-900/40' : 'bg-orange-900/20 text-orange-500 hover:bg-orange-900/40'} ${p.connected === false ? 'opacity-20' : ''}`}
+                            >
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                            <button onClick={() => { setEditingId(p.id); setTempName(p.name); }} className="p-2 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors">
+                              <svg className="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
+                            <button onClick={() => handleAction('KICK_PLAYER', { id: p.id })} className="p-2 bg-red-900/20 rounded-lg hover:bg-red-900/40 transition-colors">
+                              <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

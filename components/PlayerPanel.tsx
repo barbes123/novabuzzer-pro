@@ -12,9 +12,10 @@ interface Props {
   initialName: string;
   initialDisabled: boolean;
   language: Language;
+  isConnected: boolean;
 }
 
-const PlayerPanel: React.FC<Props> = ({ socket, gameState, buzzes, initialName, initialDisabled, language }) => {
+const PlayerPanel: React.FC<Props> = ({ socket, gameState, buzzes, initialName, initialDisabled, language, isConnected }) => {
   const [result, setResult] = useState<{ rank: number; offset: number } | null>(null);
   const [isBuzzed, setIsBuzzed] = useState(false);
   const [isDisabled, setIsDisabled] = useState(initialDisabled);
