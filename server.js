@@ -14,8 +14,14 @@ const io = new Server(httpServer, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
-  }
+  },
+  // 🕒 Give players a 2-minute "grace period" if their screen locks
+  pingTimeout: 3600000, 
+  // 💓 Check if they are still alive every 25 seconds
+  pingInterval: 25000
 });
+
+
 
 // State Management
 let secretGateCode = Math.random().toString(36).substring(2, 8).toUpperCase();
