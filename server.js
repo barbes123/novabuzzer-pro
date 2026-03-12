@@ -15,13 +15,9 @@ const io = new Server(httpServer, {
     origin: "*",
     methods: ["GET", "POST"]
   },
-  // 🕒 Give players a 2-minute "grace period" if their screen locks
-  pingTimeout: 3600000, 
-  // 💓 Check if they are still alive every 25 seconds
+  pingTimeout: 3600000,
   pingInterval: 25000
 });
-
-
 
 // State Management
 let secretGateCode = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -29,17 +25,30 @@ let gameState = 'IDLE'; // IDLE, ACTIVE, WINDOW_OPEN, LOCKED
 let currentLanguage = 'EN';
 let startTime = 0;
 let buzzes = [];
+// --- REFACTORED: 'players' is now keyed by NAME (stable ID) ---
 let players = new Map();
 let windowTimer = null;
+// --- REFACTORED: 'targetPlayerId' is now a NAME, not a socket.id ---
 let targetPlayerId = null;
+// --- NEW: Reverse lookup for socket.id -> name ---
+let socketIdToName = new Map();
+
 
 console.log(`\n[INIT] NovaBuzzer Pro Engine Started`);
 console.log(`[INIT] Secret Gate Code: ${secretGateCode}`);
 console.log(`[INIT] Port: ${config.server.port}\n`);
 
+// Helper to create the client-facing player list
+const getPlayerListForClient = () => {
+  return Array.from(players.values()).map(p => ({
+    ...p,
+    id: p.name // Ensure the 'id' field for the client is the stable name
+  }));
+};
+
 io.on('connection', (socket) => {
-  
-  // 1. REGISTRATION LOGIC
+
+  // 1. REGISTRATION LOGIC (REFACTORED for Persistent Identity)
   socket.on('register', ({ name, code, role }) => {
     if (role === 'host') {
       socket.join('host-room');
@@ -50,7 +59,7 @@ io.on('connection', (socket) => {
         language: currentLanguage
       });
       socket.emit('gameStateUpdate', { state: gameState, buzzes });
-      io.to('host-room').emit('playerListUpdate', Array.from(players.values()));
+      io.to('host-room').emit('playerListUpdate', getPlayerListForClient());
       return;
     }
 
@@ -59,29 +68,62 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const newPlayer = { name, id: socket.id, disabled: true };
-    players.set(socket.id, newPlayer);
+    let player;
+    if (players.has(name)) {
+      player = players.get(name);
+
+      // Prevent login if the name is already in use by an active connection
+      if (player.connected && player.socketId && io.sockets.sockets.has(player.socketId)) {
+        socket.emit('registered', { success: false, error: 'Name already in use. Please choose another.' });
+        return;
+      }
+
+      // Player is re-connecting. Update their socketId and mark as connected.
+      if (player.socketId) {
+        socketIdToName.delete(player.socketId);
+      }
+      player.socketId = socket.id;
+      player.connected = true;
+      console.log(`♻️  Player ${name} Re-synced with new socket: ${socket.id}`);
+
+    } else {
+      // New player registration
+      if (players.size >= 10) {
+        socket.emit('registered', { success: false, error: 'Room Full (Max 10)' });
+        return;
+      }
+      player = {
+        name: name,
+        socketId: socket.id,
+        disabled: true,
+        connected: true
+      };
+      console.log(`✅ Player ${name} registered with socket: ${socket.id}`);
+    }
+
+    players.set(name, player);
+    socketIdToName.set(socket.id, name);
     socket.join('players-room');
 
     socket.emit('registered', {
       success: true,
       role: 'player',
-      name: name,
-      disabled: true,
+      name: player.name,
+      disabled: player.disabled,
       language: currentLanguage
     });
 
-    io.to('host-room').emit('playerListUpdate', Array.from(players.values()));
+    io.to('host-room').emit('playerListUpdate', getPlayerListForClient());
   });
 
-  // --- THE SYNC BRIDGE (ADDED HERE) ---
-  // This catches the full game data from the laptop and sends it to the phone
+
+  // --- THE SYNC BRIDGE ---
   socket.on('updateGameState', (fullState) => {
     socket.broadcast.emit('gameStateLink', fullState);
   });
-  // ------------------------------------
 
-  // 2. GAME ACTION LOGIC
+
+  // 2. GAME ACTION LOGIC (REFACTORED for Persistent Identity)
   socket.on('gameAction', (payload) => {
     const { type, data } = typeof payload === 'string' ? { type: payload } : payload;
 
@@ -97,39 +139,31 @@ io.on('connection', (socket) => {
         io.emit('languageUpdate', { language: currentLanguage });
         break;
       case 'RESET':
-	targetPlayerId = null;
+        targetPlayerId = null;
         clearTimeout(windowTimer);
         gameState = 'IDLE';
         buzzes = [];
         startTime = 0;
         io.emit('gameStateUpdate', { state: 'IDLE', buzzes: [] });
         break;
-     case 'START_ROUND':
+      case 'START_ROUND':
         gameState = 'ACTIVE';
-
-        // Check: Is someone already locked in from ARM_SPECIFIC?
-        // If targetPlayerId is ALREADY something (not null), we leave it alone.
-        // If it IS null, we keep it null (allowing everyone to buzz).
         if (targetPlayerId === null) {
-          targetPlayerId = null; 
+          targetPlayerId = null;
         }
-
         buzzes = [];
         startTime = Date.now();
-
-        // We include the targetId in the emit so phones know if they are allowed to buzz
-        io.emit('gameStateUpdate', { 
-          state: 'ACTIVE', 
-          startTime, 
+        io.emit('gameStateUpdate', {
+          state: 'ACTIVE',
+          startTime,
           buzzes: [],
-          targetId: targetPlayerId 
+          targetId: targetPlayerId // targetId is now a name
         });
-
         console.log(`[GAME] Round Started. Mode: ${targetPlayerId ? 'SPRINT' : 'NORMAL'}`);
         break;
       case 'ARM_SPECIFIC':
-        gameState = 'ACTIVE'; 
-        targetPlayerId = data.playerId; // Lock to this specific socket.id
+        gameState = 'ACTIVE';
+        targetPlayerId = data.playerId; // This is now the player's name
         buzzes = [];
         io.emit('gameStateUpdate', { state: 'ACTIVE', targetId: targetPlayerId });
         console.log(`[SPRINT] Armed only player: ${targetPlayerId}`);
@@ -139,57 +173,78 @@ io.on('connection', (socket) => {
         io.to('host-room').emit('gateCodeUpdate', secretGateCode);
         break;
       case 'TOGGLE_PAUSE':
-        if (players.has(data.id)) {
+        if (players.has(data.id)) { // data.id is the name
           const p = players.get(data.id);
           p.disabled = !p.disabled;
           players.set(data.id, p);
-          io.to('host-room').emit('playerListUpdate', Array.from(players.values()));
-          io.to(data.id).emit('statusUpdate', { disabled: p.disabled });
+          io.to('host-room').emit('playerListUpdate', getPlayerListForClient());
+          if (p.socketId) {
+            io.to(p.socketId).emit('statusUpdate', { disabled: p.disabled });
+          }
         }
         break;
       case 'UPDATE_PLAYER':
+        // data.id is the OLD name, data.newName is the new one
         if (players.has(data.id)) {
           const player = players.get(data.id);
           player.name = data.newName;
-          players.set(data.id, player);
-          io.to('host-room').emit('playerListUpdate', Array.from(players.values()));
-          io.to(data.id).emit('profileUpdate', { name: data.newName });
+          players.delete(data.id);
+          players.set(data.newName, player);
+
+          if (player.socketId) {
+            socketIdToName.set(player.socketId, data.newName);
+          }
+          io.to('host-room').emit('playerListUpdate', getPlayerListForClient());
+          if (player.socketId) {
+            io.to(player.socketId).emit('profileUpdate', { name: data.newName });
+          }
         }
         break;
       case 'KICK_PLAYER':
-        if (players.has(data.id)) {
+        if (players.has(data.id)) { // data.id is the name
+          const player = players.get(data.id);
+          if (player.socketId) {
+            io.to(player.socketId).emit('kicked');
+            socketIdToName.delete(player.socketId);
+          }
           players.delete(data.id);
-          io.to(data.id).emit('kicked');
-          io.to('host-room').emit('playerListUpdate', Array.from(players.values()));
+          io.to('host-room').emit('playerListUpdate', getPlayerListForClient());
         }
         break;
       case 'KICK_ALL':
         io.to('players-room').emit('kicked');
         players.clear();
+        socketIdToName.clear();
         io.to('host-room').emit('playerListUpdate', []);
         break;
     }
   });
 
-  // 3. BUZZER LOGIC
+  // 3. BUZZER LOGIC (REFACTORED for Persistent Identity)
   socket.on('buzz', () => {
-    const player = players.get(socket.id);
-    console.log(`[BUZZ_ATTEMPT] From: ${player?.name}. Current State: ${gameState}`);
+    const name = socketIdToName.get(socket.id);
+    if (!name || !players.has(name)) {
+      console.log("❌ BUZZ REJECTED: No registered player for this socket.");
+      return;
+    }
+    const player = players.get(name);
 
-    if (!player || player.disabled || (gameState !== 'ACTIVE' && gameState !== 'WINDOW_OPEN' && gameState !== 'BATTLE')) {
+    console.log(`[BUZZ_ATTEMPT] From: ${player.name}. Current State: ${gameState}`);
+
+    if (player.disabled || (gameState !== 'ACTIVE' && gameState !== 'WINDOW_OPEN' && gameState !== 'BATTLE')) {
       console.log("❌ BUZZ REJECTED: State mismatch or player disabled.");
       return;
     }
-    
-    if (targetPlayerId !== null && socket.id !== targetPlayerId) {
+
+    if (targetPlayerId !== null && player.name !== targetPlayerId) {
       console.log(`[REJECTED] Blocked buzz from ${player.name} (Not the target)`);
-      return; 
+      return;
     }
 
-    if (buzzes.find(b => b.playerId === socket.id)) return;
+    if (buzzes.find(b => b.playerId === player.name)) return;
 
     const rank = buzzes.length + 1;
-    buzzes.push({ playerId: socket.id, playerName: player.name, rank });
+    buzzes.push({ playerId: player.name, playerName: player.name, rank });
 
     if (rank === 1) {
       console.log(`✅ SUCCESS: ${player.name} is the winner!`);
@@ -197,7 +252,7 @@ io.on('connection', (socket) => {
       io.emit('gameStateUpdate', { state: 'LOCKED', buzzes });
       io.to('host-room').emit('firstBuzzDetected', {
         winnerName: player.name,
-        playerId: socket.id
+        playerId: player.name // Send stable name
       });
     }
 
@@ -205,10 +260,19 @@ io.on('connection', (socket) => {
     io.to('host-room').emit('liveBuzzUpdate', buzzes);
   });
 
+  // 4. DISCONNECT LOGIC (REFACTORED for Persistent Identity)
   socket.on('disconnect', () => {
-    if (players.has(socket.id)) {
-      players.delete(socket.id);
-      io.to('host-room').emit('playerListUpdate', Array.from(players.values()));
+    if (socketIdToName.has(socket.id)) {
+      const name = socketIdToName.get(socket.id);
+      if (players.has(name)) {
+        const player = players.get(name);
+        console.log(`🔌 Player disconnected: ${player.name}`);
+        player.connected = false;
+        // The socketId is now stale, but we leave it for potential debugging
+        players.set(name, player);
+        socketIdToName.delete(socket.id);
+        io.to('host-room').emit('playerListUpdate', getPlayerListForClient());
+      }
     }
   });
 });

@@ -7,6 +7,7 @@ import { Role, GameState, Player, BuzzRecord, Language } from './types';
 import { translations } from './translations';
 import { HOST_PASSWORD } from './constants';
 import './index.css';
+import SetupScreen from './components/SetupScreen';
 
 const getSocketUrl = () => {
   const hostname = window.location.hostname || 'localhost';
@@ -36,6 +37,14 @@ const App: React.FC = () => {
   const gateCodeRef = React.useRef(gateCode);
   const isRegisteredRef = React.useRef(isRegistered);
 
+  if (window.location.pathname === '/setup') {
+    return <SetupScreen />; 
+  }
+  
+  if (window.location.pathname === '/host') {
+    if (role !== 'host') setRole('host'); 
+  }
+
   // Keep the refs in sync with state
   useEffect(() => {
     playerDataRef.current = playerData;
@@ -62,6 +71,9 @@ const App: React.FC = () => {
     }
   };
   // ----------------------
+
+  
+  
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -116,7 +128,7 @@ const App: React.FC = () => {
         setRegistrationError(data.error);
       }
     });
-    
+
     newSocket.on('gameStateUpdate', (data) => {
       console.log("📥 [PLAYER_APP] State received:", data.state, "Target:", data.targetId);
 
@@ -177,7 +189,8 @@ const App: React.FC = () => {
     });
 
     newSocket.on('playerListUpdate', (list) => {
-      setPlayers(list);
+      setPlayers([...list]);
+
       // Sync local player data if this device is in the list
       const me = list.find((p: Player) => p.id === newSocket.id);
       if (me) {
@@ -185,9 +198,24 @@ const App: React.FC = () => {
       }
     });
 
+    // newSocket.on('playerListUpdate', (list) => {
+    //   setPlayers(list);
+    //   // Sync local player data if this device is in the list
+    //   const me = list.find((p: Player) => p.id === newSocket.id);
+    //   if (me) {
+    //     setPlayerData({ name: me.name, disabled: me.disabled });
+    //   }
+    // });
+
     newSocket.on('gateCodeUpdate', (code) => setGateCode(code));
     newSocket.on('liveBuzzUpdate', (list) => setBuzzes(list));
     newSocket.on('kicked', () => window.location.reload());
+
+    newSocket.on('disconnect', () => {
+      setIsConnected(false);
+      // We don't wipe playerData because we want to remember our name 
+      // for the "Healing" re-registration when we wake up.
+    });
 
     setSocket(newSocket);
 
@@ -366,7 +394,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950">
       {role === 'host' ? (
-        <ControlPanel socket={socket!} gameState={gameState} gateCode={gateCode} players={players} buzzes={buzzes} language={language} />
+        <ControlPanel socket={socket!} gameState={gameState} gateCode={gateCode} players={players} buzzes={buzzes} language={language} isConnected={isConnected} />
       ) : (
         <PlayerPanel
           socket={socket!}
@@ -375,6 +403,7 @@ const App: React.FC = () => {
           initialName={playerData.name}
           initialDisabled={playerData.disabled}
           language={language}
+          isConnected={isConnected}
         />
       )}
     </div>
