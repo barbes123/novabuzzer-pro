@@ -48,6 +48,9 @@ const getPlayerListForClient = () => {
 
 io.on('connection', (socket) => {
 
+  // Immediately send the current gate code status to the connecting client
+  socket.emit('gateCodeUpdate', secretGateCode);
+
   // 1. REGISTRATION LOGIC (REFACTORED for Persistent Identity)
   socket.on('register', ({ name, code, role }) => {
     if (role === 'host') {
@@ -63,7 +66,8 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (code !== secretGateCode) {
+    // Allow joining if gate is open (empty code)
+    if (secretGateCode !== '' && code !== secretGateCode) {
       socket.emit('registered', { success: false, error: 'Invalid Secret Gate Code' });
       return;
     }
@@ -125,6 +129,7 @@ io.on('connection', (socket) => {
 
   // 2. GAME ACTION LOGIC (REFACTORED for Persistent Identity)
   socket.on('gameAction', (payload) => {
+    console.log(`[ACTION] Received: ${payload.type}`, payload.data || {});
     const { type, data } = typeof payload === 'string' ? { type: payload } : payload;
 
     switch (type) {
@@ -170,7 +175,12 @@ io.on('connection', (socket) => {
         break;
       case 'REGEN_CODE':
         secretGateCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-        io.to('host-room').emit('gateCodeUpdate', secretGateCode);
+        io.emit('gateCodeUpdate', secretGateCode); // Emit to all
+        break;
+      case 'SET_GATE_CODE':
+        secretGateCode = (data.code || '').toUpperCase();
+        console.log(`[GAME] Gate Code set to: '${secretGateCode}'`);
+        io.emit('gateCodeUpdate', secretGateCode); // Emit to all
         break;
       case 'TOGGLE_PAUSE':
         if (players.has(data.id)) { // data.id is the name

@@ -50,6 +50,12 @@ const ControlPanel: React.FC<Props> = ({ socket, gameState, gateCode, players, b
     setEditingId(null);
   };
 
+  const handleGateCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Uppercase and limit to 6 chars, then emit to server
+    const newCode = e.target.value.toUpperCase().substring(0, 6);
+    handleAction('SET_GATE_CODE', { code: newCode });
+  };
+
   const copyGateCode = async () => {
     if (!gateCode) return;
     try {
@@ -132,8 +138,14 @@ const ControlPanel: React.FC<Props> = ({ socket, gameState, gateCode, players, b
               <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl flex flex-col justify-center relative overflow-hidden group">
                 <h2 className="text-slate-500 text-[10px] font-black mb-4 uppercase tracking-[0.4em]">{t.GATE_KEY}</h2>
                 <div className="flex items-center gap-4">
-                  <div className="text-6xl font-mono font-black text-blue-400 tracking-[0.2em] bg-slate-800/50 px-6 py-2 rounded-2xl min-w-[300px] text-center">{showGateCode ? gateCode : '••••••'}</div>
-                  <button onClick={() => setShowGateCode(!showGateCode)} className="p-4 bg-slate-800 hover:bg-slate-700 rounded-2xl text-slate-400 hover:text-white transition-all border border-slate-700 font-bold text-[10px] uppercase tracking-widest">{showGateCode ? t.HIDE : t.SHOW}</button>
+                  <input
+                    type="text"
+                    value={gateCode}
+                    onChange={handleGateCodeChange}
+                    maxLength={6}
+                    placeholder="GATE OPEN"
+                    className="text-6xl font-mono font-black uppercase text-blue-400 tracking-[0.2em] bg-slate-800/50 px-6 py-2 rounded-2xl min-w-[300px] text-center outline-none focus:ring-2 ring-blue-500 transition-all"
+                  />
                   <button
                     onClick={() => handleAction('REGEN_CODE')}
                     className="p-4 bg-slate-800 hover:bg-slate-700 rounded-2xl text-slate-400 hover:text-white transition-all border border-slate-700 flex items-center gap-2"

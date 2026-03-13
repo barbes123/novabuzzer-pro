@@ -365,7 +365,7 @@ const App: React.FC = () => {
               <input name="name" required className="w-full bg-slate-800 border-2 border-slate-700 rounded-2xl p-4 text-white font-bold focus:border-blue-500 outline-none transition-all shadow-inner" placeholder="E.g. Captain" />
             </div> */}
 
-            {role === 'player' && (
+            {role === 'player' && gateCode !== '' && (
               <div>
                 <label className="block text-[10px] font-black mb-2 text-slate-500 uppercase tracking-widest text-left">{t.GATE_KEY_LABEL}</label>
                 <input name="code" required maxLength={6} className="w-full bg-slate-800 border-2 border-slate-700 rounded-2xl p-4 text-white font-mono uppercase text-center text-2xl tracking-[0.4em] font-black focus:border-blue-500 outline-none transition-all shadow-inner" placeholder="000000" />
