@@ -15,7 +15,8 @@ const io = new Server(httpServer, {
     origin: "*",
     methods: ["GET", "POST"]
   },
-  pingTimeout: 3600000,
+  // pingTimeout: 3600000,
+  pingTimeout: 14400000,
   pingInterval: 25000
 });
 

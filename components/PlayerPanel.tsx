@@ -8,6 +8,7 @@ import { translations } from '../translations';
 interface Props {
   socket: Socket;
   gameState: GameState;
+  targetId?: string;               // ← add this line
   buzzes: BuzzRecord[];
   initialName: string;
   initialDisabled: boolean;
@@ -15,7 +16,7 @@ interface Props {
   isConnected: boolean;
 }
 
-const PlayerPanel: React.FC<Props> = ({ socket, gameState, buzzes, initialName, initialDisabled, language, isConnected }) => {
+const PlayerPanel: React.FC<Props> = ({ socket, gameState,   targetId,  buzzes, initialName, initialDisabled, language, isConnected }) => {
   const [result, setResult] = useState<{ rank: number; offset: number } | null>(null);
   const [isBuzzed, setIsBuzzed] = useState(false);
   const [isDisabled, setIsDisabled] = useState(initialDisabled);
@@ -80,6 +81,12 @@ const PlayerPanel: React.FC<Props> = ({ socket, gameState, buzzes, initialName, 
     }
   }, [gameState]);
 
+  useEffect(() => {
+    console.log("🧩 PlayerPanel gameState prop:", gameState);
+    console.log("🧩 Extracted targetId:", (gameState as any)?.targetId);
+    console.log("🧩 My name:", name);
+  }, [gameState, name]);
+
   const handleBuzz = () => {
     // Strictly prevent buzzing if paused, already buzzed, or system not armed
     // if (isDisabled || isBuzzed || (gameState !== 'ACTIVE' && gameState !== 'WINDOW_OPEN')) return;
@@ -94,12 +101,18 @@ const PlayerPanel: React.FC<Props> = ({ socket, gameState, buzzes, initialName, 
   const currentStatus = (gameState as any)?.state || gameState;
 
   // 2. REPLACE YOUR OLD isArmed WITH THIS:
-  const actualGameState = isDisabled ? 'PAUSED' : (gameState as any)?.state || gameState;
+  const isTarget = !targetId || targetId === name;
   const isArmed = !isDisabled && !isBuzzed && (
-    actualGameState === 'ACTIVE' ||
-    actualGameState === 'BATTLE' ||
-    actualGameState === 'WINDOW_OPEN'
-  );
+    gameState === 'ACTIVE' ||
+    gameState === 'BATTLE' ||
+    gameState === 'WINDOW_OPEN'
+  ) && isTarget;
+  // const actualGameState = isDisabled ? 'PAUSED' : (gameState as any)?.state || gameState;
+  // const isArmed = !isDisabled && !isBuzzed && (
+  //   actualGameState === 'ACTIVE' ||
+  //   actualGameState === 'BATTLE' ||
+  //   actualGameState === 'WINDOW_OPEN'
+  // );
   // const isArmed = (currentStatus === 'ACTIVE' || currentStatus === 'BATTLE' || currentStatus === 'WINDOW_OPEN') && !isBuzzed && !isDisabled;
   const getButtonText = () => {
     if (isDisabled) return t.P_OFF;

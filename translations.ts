@@ -121,7 +121,7 @@ export const translations = {
     // P_WAITING: "ОЖИДАЕМ ВЕДУЩЕГО",
     // P_RESULT_RANK: "Место",
     // P_BUZZ: "КНОПКА",
-    P_PRESS_ME: "Роунд", // Active state (Red)
+    P_PRESS_ME: "Раунд", // Active state (Red)
     P_OFF: "БЛОК",
     P_PROTOCOL: "ПРОТОКОЛ ИГРОКА",
     P_STATUS: "СТАТУС АРЕНЫ",

@@ -27,6 +27,7 @@ const App: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [buzzes, setBuzzes] = useState<BuzzRecord[]>([]);
   const [showPassword, setShowPassword] = useState(false);
+  const [targetId, setTargetId] = useState<string | undefined>();
 
   const [playerData, setPlayerData] = useState<{ name: string; disabled: boolean }>({
     name: '',
@@ -129,35 +130,39 @@ const App: React.FC = () => {
       }
     });
 
+
     newSocket.on('gameStateUpdate', (data) => {
-      console.log("📥 [PLAYER_APP] State received:", data.state, "Target:", data.targetId);
+  console.log("📥 [PLAYER_APP] State received:", data.state, "Target:", data.targetId);
 
-      // 1. Update the global game state
-      setGameState(data.state);
+  // 1. Update the global game state
+  setGameState(data.state);
 
-      // 2. Handle the "Target Lock" for Round 4 (Sprint) - BUT preserve pause state!
-      setPlayerData(prev => {
-        // If player is paused by host, KEEP them disabled regardless of game state
-        if (prev.disabled) {
-          return prev; // Keep paused state
-        }
+  // <-- ADD THIS LINE -->
+  setTargetId(data.targetId);   // store the target player name
 
-        // Otherwise, apply normal game state rules
-        if (data.state === 'ACTIVE') {
-          const isMyTurn = !data.targetId || data.targetId === newSocket.id;
-          return {
-            ...prev,
-            disabled: !isMyTurn
-          };
-        } else {
-          // If state is IDLE or LOCKED, disable
-          return { ...prev, disabled: true };
-        }
-      });
+  // 2. Handle the "Target Lock" for Round 4 (Sprint) - BUT preserve pause state!
+  setPlayerData(prev => {
+    // If player is paused by host, KEEP them disabled regardless of game state
+    if (prev.disabled) {
+      return prev; // Keep paused state
+    }
 
-      if (data.buzzes) setBuzzes(data.buzzes);
-      if (data.state === 'IDLE') setBuzzes([]);
-    });
+    // Otherwise, apply normal game state rules
+    if (data.state === 'ACTIVE') {
+      const isMyTurn = !data.targetId || data.targetId === newSocket.id;
+      return {
+        ...prev,
+        disabled: !isMyTurn
+      };
+    } else {
+      // If state is IDLE or LOCKED, disable
+      return { ...prev, disabled: true };
+    }
+  });
+
+  if (data.buzzes) setBuzzes(data.buzzes);
+  if (data.state === 'IDLE') setBuzzes([]);
+});
 
     // newSocket.on('gameStateUpdate', (data) => {
     //   console.log("📥 [PLAYER_APP] State received:", data.state, "Target:", data.targetId);
@@ -165,24 +170,31 @@ const App: React.FC = () => {
     //   // 1. Update the global game state
     //   setGameState(data.state);
 
-    //   // 2. Handle the "Target Lock" for Round 4 (Sprint)
-    //   if (data.state === 'ACTIVE') {
-    //     // If targetId is provided, I'm only enabled if it matches MY socket ID
-    //     // If targetId is null/undefined, everyone is enabled (Normal Rounds)
-    //     const isMyTurn = !data.targetId || data.targetId === newSocket.id;
+    //   // 2. Handle the "Target Lock" for Round 4 (Sprint) - BUT preserve pause state!
+    //   setPlayerData(prev => {
+    //     // If player is paused by host, KEEP them disabled regardless of game state
+    //     if (prev.disabled) {
+    //       return prev; // Keep paused state
+    //     }
 
-    //     setPlayerData(prev => ({
-    //       ...prev,
-    //       disabled: !isMyTurn // Disable the button if it's not my turn
-    //     }));
-    //   } else {
-    //     // If state is IDLE or LOCKED, everyone is disabled
-    //     setPlayerData(prev => ({ ...prev, disabled: true }));
-    //   }
+    //     // Otherwise, apply normal game state rules
+    //     if (data.state === 'ACTIVE') {
+    //       const isMyTurn = !data.targetId || data.targetId === newSocket.id;
+    //       return {
+    //         ...prev,
+    //         disabled: !isMyTurn
+    //       };
+    //     } else {
+    //       // If state is IDLE or LOCKED, disable
+    //       return { ...prev, disabled: true };
+    //     }
+    //   });
 
     //   if (data.buzzes) setBuzzes(data.buzzes);
     //   if (data.state === 'IDLE') setBuzzes([]);
     // });
+
+ 
 
     newSocket.on('languageUpdate', (data) => {
       setLanguage(data.language);
@@ -399,6 +411,7 @@ const App: React.FC = () => {
         <PlayerPanel
           socket={socket!}
           gameState={gameState}
+          targetId={targetId} 
           buzzes={buzzes}
           initialName={playerData.name}
           initialDisabled={playerData.disabled}
