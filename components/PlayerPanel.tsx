@@ -146,8 +146,8 @@ const PlayerPanel: React.FC<Props> = ({ socket, gameState,   targetId,  buzzes, 
           {isWinner ? `★ ${t.P_FIRST} ★` : isDisabled ? t.P_PAUSED : isArmed ? t.P_READY : t.P_STANDBY}
         </div>
         <div className="text-center">
-          <h2 className={`text-[9px] font-black uppercase tracking-[0.4em] mb-1 ${isWinner ? 'text-yellow-200' : 'text-slate-600'}`}>{t.P_PROTOCOL}</h2>
-          <p className={`text-4xl font-black italic uppercase tracking-tighter ${isWinner ? 'text-white' : 'text-slate-100'}`}>
+          <h2 className={`text-[9px] font-black tracking-[0.4em] mb-1 ${isWinner ? 'text-yellow-200' : 'text-slate-600'}`}>{t.P_PROTOCOL}</h2>
+          <p className={`text-4xl font-black italic tracking-tighter ${isWinner ? 'text-white' : 'text-slate-100'}`}>
             {name || t.PLAYER_LABEL}
           </p>
         </div>

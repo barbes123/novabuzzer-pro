@@ -39,11 +39,11 @@ const App: React.FC = () => {
   const isRegisteredRef = React.useRef(isRegistered);
 
   if (window.location.pathname === '/setup') {
-    return <SetupScreen />; 
+    return <SetupScreen />;
   }
-  
+
   if (window.location.pathname === '/host') {
-    if (role !== 'host') setRole('host'); 
+    if (role !== 'host') setRole('host');
   }
 
   // Keep the refs in sync with state
@@ -73,8 +73,8 @@ const App: React.FC = () => {
   };
   // ----------------------
 
-  
-  
+
+
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -132,37 +132,37 @@ const App: React.FC = () => {
 
 
     newSocket.on('gameStateUpdate', (data) => {
-  console.log("📥 [PLAYER_APP] State received:", data.state, "Target:", data.targetId);
+      console.log("📥 [PLAYER_APP] State received:", data.state, "Target:", data.targetId);
 
-  // 1. Update the global game state
-  setGameState(data.state);
+      // 1. Update the global game state
+      setGameState(data.state);
 
-  // <-- ADD THIS LINE -->
-  setTargetId(data.targetId);   // store the target player name
+      // <-- ADD THIS LINE -->
+      setTargetId(data.targetId);   // store the target player name
 
-  // 2. Handle the "Target Lock" for Round 4 (Sprint) - BUT preserve pause state!
-  setPlayerData(prev => {
-    // If player is paused by host, KEEP them disabled regardless of game state
-    if (prev.disabled) {
-      return prev; // Keep paused state
-    }
+      // 2. Handle the "Target Lock" for Round 4 (Sprint) - BUT preserve pause state!
+      setPlayerData(prev => {
+        // If player is paused by host, KEEP them disabled regardless of game state
+        if (prev.disabled) {
+          return prev; // Keep paused state
+        }
 
-    // Otherwise, apply normal game state rules
-    if (data.state === 'ACTIVE') {
-      const isMyTurn = !data.targetId || data.targetId === newSocket.id;
-      return {
-        ...prev,
-        disabled: !isMyTurn
-      };
-    } else {
-      // If state is IDLE or LOCKED, disable
-      return { ...prev, disabled: true };
-    }
-  });
+        // Otherwise, apply normal game state rules
+        if (data.state === 'ACTIVE') {
+          const isMyTurn = !data.targetId || data.targetId === newSocket.id;
+          return {
+            ...prev,
+            disabled: !isMyTurn
+          };
+        } else {
+          // If state is IDLE or LOCKED, disable
+          return { ...prev, disabled: true };
+        }
+      });
 
-  if (data.buzzes) setBuzzes(data.buzzes);
-  if (data.state === 'IDLE') setBuzzes([]);
-});
+      if (data.buzzes) setBuzzes(data.buzzes);
+      if (data.state === 'IDLE') setBuzzes([]);
+    });
 
     // newSocket.on('gameStateUpdate', (data) => {
     //   console.log("📥 [PLAYER_APP] State received:", data.state, "Target:", data.targetId);
@@ -194,7 +194,7 @@ const App: React.FC = () => {
     //   if (data.state === 'IDLE') setBuzzes([]);
     // });
 
- 
+
 
     newSocket.on('languageUpdate', (data) => {
       setLanguage(data.language);
@@ -337,18 +337,43 @@ const App: React.FC = () => {
 
               <div className="relative group">
                 <input
-                  /* If role is host and showPassword is true, show "text", otherwise "password" */
+                  /* 1. Logic-based type: password for host, text for player */
                   type={role === 'host' ? (showPassword ? "text" : "password") : "text"}
+
                   value={playerData.name}
-                  onChange={(e) => setPlayerData({ ...playerData, name: e.target.value })}
-                  onFocus={() => {
-                    setPlayerData({ ...playerData, name: '' });
+
+                  /* 2. Character limit for players (10 as you had it) */
+                  maxLength={role === 'player' ? 10 : undefined}
+
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    if (role === 'player') {
+                      // Prevent starting with a space, but allow internal spaces
+                      val = val.trimStart();
+                    }
+                    setPlayerData({ ...playerData, name: val });
                   }}
+
+                  /* FIX: Removed the line that sets name to '' onFocus */
+                  onFocus={(e) => {
+                    // Optional: This selects the text so they can type over it 
+                    // without deleting it manually, but it won't "reset" it.
+                    e.target.select();
+                  }}
+
                   onBlur={() => {
-                    if (playerData.name.trim() === '') {
-                      setPlayerData({ ...playerData, name: role === 'host' ? '' : 'Contestant' });
+                    if (role === 'player') {
+                      // Remove trailing spaces when they leave the field
+                      const finalName = playerData.name.trim();
+                      setPlayerData({
+                        ...playerData,
+                        name: finalName === '' ? 'Player' : finalName
+                      });
+                    } else if (playerData.name === '') {
+                      setPlayerData({ ...playerData, name: '' });
                     }
                   }}
+
                   className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl p-4 pr-12 text-white font-medium focus:border-blue-500 outline-none transition-all shadow-inner"
                   placeholder={role === 'host' ? "••••••••" : "e.g. John Doe"}
                   required
@@ -411,7 +436,7 @@ const App: React.FC = () => {
         <PlayerPanel
           socket={socket!}
           gameState={gameState}
-          targetId={targetId} 
+          targetId={targetId}
           buzzes={buzzes}
           initialName={playerData.name}
           initialDisabled={playerData.disabled}

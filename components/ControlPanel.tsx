@@ -251,7 +251,7 @@ const ControlPanel: React.FC<Props> = ({ socket, gameState, gateCode, players, b
                               {editingId === p.id ? (
                                 <input autoFocus className="bg-slate-700 text-white p-2 rounded-lg text-sm outline-none w-24 border border-blue-500" value={tempName} onChange={(e) => setTempName(e.target.value)} onBlur={() => saveName(p.id)} onKeyDown={(e) => e.key === 'Enter' && saveName(p.id)} />
                               ) : (
-                                <span className={`font-black uppercase tracking-tight truncate text-lg 
+                                <span className={`font-black tracking-tight truncate text-lg 
                 ${isWinner ? 'text-yellow-500' :
                                     'text-slate-100'
                                   }`}>
@@ -338,7 +338,7 @@ const ControlPanel: React.FC<Props> = ({ socket, gameState, gateCode, players, b
                           <div className={`text-4xl font-black italic ${idx === 0 ? 'text-yellow-500' : 'text-slate-700'}`}>#{idx + 1}</div>
                           <div>
                             <div className="flex items-center gap-3">
-                              <span className={`text-2xl font-black uppercase tracking-tight ${idx === 0 ? 'text-yellow-500' : 'text-slate-400'}`}>{b.playerName}</span>
+                              <span className={`text-2xl font-black tracking-tight ${idx === 0 ? 'text-yellow-500' : 'text-slate-400'}`}>{b.playerName}</span>
                               {idx === 0 && <span className="bg-yellow-500 text-slate-950 px-3 py-0.5 rounded-full text-[10px] font-black uppercase italic">{t.WINNER}</span>}
                             </div>
                             <div className="text-[10px] font-mono text-slate-700 uppercase mt-1">Capture Point: {b.offset}ms</div>
